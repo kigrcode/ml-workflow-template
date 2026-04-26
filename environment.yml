@@ -1,0 +1,48 @@
+name: ml-template
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+
+  # Core scientific stack
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+
+  # Plotting + notebooks
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+
+  # Model interpretability
+  - shap
+
+  # Classical modelling
+  - statsmodels
+
+  # Fast IO
+  - pyarrow
+
+  # Utilities
+  - pyyaml
+  - joblib
+  - rich
+
+  # Optional ML algorithms
+  - xgboost
+  - lightgbm
+
+  # Code quality (optional but recommended)
+  - black
+  - ruff
+
+  # Pip section for packages not on conda-forge
+  - pip
+  - pip:
+      - category-encoders
+      - catboost
+      - optuna

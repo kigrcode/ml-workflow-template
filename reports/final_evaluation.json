@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-04-24T17:18:50.726258",
+  "metrics": {
+    "model": "xgboost_classifier",
+    "task": "classification",
+    "optimal_threshold": 0.45,
+    "threshold_metric": "f1",
+    "test_metrics": {
+      "roc_auc": 0.8505270092226614,
+      "f1": 0.7893197027272422,
+      "precision": 0.7973531844499586,
+      "recall": 0.784189723320158,
+      "accuracy": 0.8044692737430168,
+      "log_loss": 0.4473067356533304
+    },
+    "workflow_comparison": {
+      "Baseline CV": 0.8828866512565572,
+      "Tuned CV": 0.8834952846120558,
+      "Final test": 0.8505270092226614
+    }
+  }
+}

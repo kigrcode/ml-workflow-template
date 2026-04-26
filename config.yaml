@@ -1,0 +1,71 @@
+# =============================================================
+# Project Configuration
+# Edit this file when starting a new project — do not edit
+# the notebooks or src modules directly for dataset-specific
+# settings.
+# =============================================================
+
+# Target variable
+target: "Survived"
+
+# Columns to drop before modelling (IDs, irrelevant columns etc.)
+drop_columns:
+  - "PassengerId"
+
+# Train/test split
+split:
+  test_size: 0.2
+  random_state: 42
+  stratify: true
+
+# Preprocessing pipeline
+pipeline:
+  scaler: "standard"       # options: standard, minmax, robust
+  hashing_dim: 32
+  feature_selection:
+    variance_threshold: 0.0
+    correlation_threshold: null
+    protected_features: []
+
+# Feature engineering
+feature_engineering:
+  interactions: true        # multiply pairs of numeric columns (use for linear models)
+  polynomial: false          # square/cube numeric columns (use for linear models)
+  binning: true            # bin continuous columns into categories
+  aggregations: false        # group by categorical, compute numeric stats
+  polynomial_degree: 2       # degree for polynomial features
+  max_interaction_pairs: 20  # cap to prevent feature explosion
+  bin_numeric_cols: []       # list of columns to bin, empty = auto detect
+  n_bins: 5                  # number of bins for binning
+  aggregation_groupby: []    # categorical columns to group by
+  aggregation_targets: []    # numeric columns to aggregate
+
+# Feature selection
+feature_selection:
+  mi_percentile: 50          # keep top 50% of features by mutual information
+  shap_percentile: 80        # keep top 80% of features by SHAP importance
+
+# Baseline models
+baseline:
+  run_all: true
+  cv_folds: 5
+  random_state: 42
+  models:
+    - logistic_regression
+    - random_forest_classifier
+    - xgboost_classifier
+
+# Tuning
+tuning:
+  method: "optuna"         # options: random_search, optuna
+  n_trials: 50
+  cv_folds: 5
+  random_state: 42
+  scoring: "roc_auc"       # options: roc_auc, f1, accuracy, neg_rmse
+  models_to_tune:
+    - xgboost_classifier
+
+# Threshold tuning
+threshold_tuning:
+  metric: "f1"             # options: f1, precision, recall, accuracy                      
+  num_thresholds: 101
