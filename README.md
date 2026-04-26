@@ -1,5 +1,7 @@
 # ML Workflow Template
 
+![CI](https://github.com/kigrcode/ml-workflow-template/actions/workflows/ci.yml/badge.svg)
+
 ## Overview
 An end-to-end classical machine learning template designed for reuse across 
 projects. Built with a clean separation between orchestration notebooks and 
