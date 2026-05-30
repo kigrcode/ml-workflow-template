@@ -188,6 +188,12 @@ class ModelTrainer:
     def _is_catboost_model(self, model_name: str) -> bool:
         return "catboost" in model_name
 
+    def _is_xgboost_model(self, model_name: str) -> bool:
+        return "xgboost" in model_name
+
+    def _is_lightgbm_model(self, model_name: str) -> bool:
+        return "lightgbm" in model_name
+
     def _get_cat_features_indices(self, X: pd.DataFrame) -> List[int]:
         cat_cols = X.select_dtypes(exclude=["number"]).columns
         return [X.columns.get_loc(c) for c in cat_cols]
@@ -221,6 +227,9 @@ class ModelTrainer:
                     X_train_cb,
                     y_train,
                     cat_features=cat_features if cat_features else None,
+                    eval_set=(X_val_cb, y_val),
+                    early_stopping_rounds=50,
+                    verbose=False,
                 )
                 if self.task_ == "classification":
                     y_proba = model.predict_proba(X_val_cb)
@@ -234,14 +243,34 @@ class ModelTrainer:
                     metrics = compute_regression_metrics(y_val, y_pred)
 
             else:
-                # Clone preprocessor for each fold to prevent leakage
                 import copy
                 fold_preprocessor = copy.deepcopy(preprocessor)
                 X_train_trans = fold_preprocessor.fit_transform(X_train_raw, y_train)
                 X_val_trans = fold_preprocessor.transform(X_val_raw)
 
-                model = model_class(**params)
-                model.fit(X_train_trans, y_train)
+                # Add early stopping for supported models
+                fit_params = {}
+                if self._is_xgboost_model(model_name):
+                    fit_params = {
+                        "eval_set": [(X_val_trans, y_val)],
+                        "verbose": False,
+                    }
+                    # Add early stopping to params
+                    params_with_es = {**params, "early_stopping_rounds": 50}
+                    model = model_class(**params_with_es)
+                elif self._is_lightgbm_model(model_name):
+                    fit_params = {
+                        "eval_set": [(X_val_trans, y_val)],
+                        "callbacks": [
+                            __import__("lightgbm").early_stopping(50, verbose=False),
+                            __import__("lightgbm").log_evaluation(period=-1),
+                        ],
+                    }
+                    model = model_class(**params)
+                else:
+                    model = model_class(**params)
+
+                model.fit(X_train_trans, y_train, **fit_params)
 
                 if self.task_ == "classification":
                     y_proba = model.predict_proba(X_val_trans)

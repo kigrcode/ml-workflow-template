@@ -6,11 +6,23 @@ Optimal threshold is saved to artifacts for use in final evaluation.
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score
+from sklearn.metrics import (
+    f1_score,
+    fbeta_score,
+    precision_score,
+    recall_score,
+    accuracy_score,
+)
 
 
 METRIC_FUNCTIONS = {
     "f1": f1_score,
+    "f2": lambda y_true, y_pred, **kwargs: fbeta_score(
+        y_true, y_pred, beta=2, zero_division=0
+    ),
+    "f3": lambda y_true, y_pred, **kwargs: fbeta_score(
+        y_true, y_pred, beta=3, zero_division=0
+    ),
     "precision": precision_score,
     "recall": recall_score,
     "accuracy": accuracy_score,
@@ -22,14 +34,31 @@ def tune_threshold(
     y_proba,
     metric_name: str,
     num_thresholds: int,
+    min_samples_warning: int = 200,
 ) -> dict:
     """
     Search over thresholds in [0, 1] to maximise a given metric.
     Assumes binary classification and y_proba is probability for class 1.
 
-    metric_name: one of f1, precision, recall, accuracy
+    metric_name: one of f1, f2, f3, precision, recall, accuracy
     num_thresholds: number of thresholds to evaluate
+    min_samples_warning: warn if fewer samples than this threshold
+
+    Note: optimising purely for recall can lead to a degenerate solution
+    where threshold=0 classifies everything as positive. Use f2 or f3
+    to weight recall heavily while maintaining a precision floor.
     """
+    # Warn if sample size is too small for reliable threshold optimisation
+    n_samples = len(y_true)
+    if n_samples < min_samples_warning:
+        print(
+            f"WARNING: Only {n_samples} samples available for threshold tuning. "
+            f"Threshold optimisation is unreliable on small datasets — the optimal "
+            f"threshold may not generalise to unseen data. Consider using the "
+            f"default threshold (0.5) or cross validated threshold search instead. "
+            f"Recommended minimum: {min_samples_warning} samples."
+        )
+
     if metric_name not in METRIC_FUNCTIONS:
         raise ValueError(
             f"Unknown metric: {metric_name}. "
@@ -45,9 +74,10 @@ def tune_threshold(
     for t in thresholds:
         y_pred = (y_proba >= t).astype(int)
         try:
-            score = metric_fn(y_true, y_pred, zero_division=0) \
-                if metric_name in ["precision", "recall"] \
-                else metric_fn(y_true, y_pred)
+            if metric_name in ["precision", "recall"]:
+                score = metric_fn(y_true, y_pred, zero_division=0)
+            else:
+                score = metric_fn(y_true, y_pred)
             if score > best_score:
                 best_score = score
                 best_threshold = t
@@ -58,6 +88,8 @@ def tune_threshold(
         "best_threshold": float(best_threshold),
         "best_score": float(best_score),
         "metric": metric_name,
+        "n_samples": n_samples,
+        "warning": n_samples < min_samples_warning,
     }
 
 

@@ -9,9 +9,10 @@ class FeatureEngineeringPipeline:
     """
     A unified, dataset-agnostic feature engineering pipeline.
     Handles:
-        - type detection
+        - type detection with hybrid ordinality detection
         - imputers
-        - encoders
+        - ordinal encoders
+        - one-hot and hashing encoders
         - scalers
         - datetime feature extraction
         - feature selection (optional)
@@ -26,6 +27,7 @@ class FeatureEngineeringPipeline:
 
         self.imputers = {}
         self.encoders = {}
+        self.ordinal_encoders = {}
         self.scalers = {}
         self.datetime_features = {}
         self.selected_features = None
@@ -40,6 +42,9 @@ class FeatureEngineeringPipeline:
         imputers = {}
 
         for col in self.feature_types["numeric"]:
+            imputers[col] = ("median", df[col].median())
+
+        for col in self.feature_types.get("ordinal", []):
             imputers[col] = ("median", df[col].median())
 
         for col in self.feature_types["categorical"]:
@@ -69,11 +74,30 @@ class FeatureEngineeringPipeline:
 
         self.encoders = encoders
 
+    def _fit_ordinal_encoders(self, df: pd.DataFrame):
+        """
+        Fit ordinal encoders for ordinal features.
+        Maps unique values to 0-based integers in sorted order.
+        """
+        ordinal_encoders = {}
+
+        for col in self.feature_types.get("ordinal", []):
+            unique_vals = sorted(df[col].dropna().unique())
+            ordinal_encoders[col] = {v: i for i, v in enumerate(unique_vals)}
+
+        self.ordinal_encoders = ordinal_encoders
+
     def _fit_scalers(self, df: pd.DataFrame):
         scalers = {}
         method = self.config.get("scaler", "standard")
 
-        for col in self.feature_types["numeric"]:
+        # Scale both numeric and ordinal columns
+        cols_to_scale = (
+            self.feature_types["numeric"] +
+            self.feature_types.get("ordinal", [])
+        )
+
+        for col in cols_to_scale:
             series = df[col]
 
             if method == "standard":
@@ -116,6 +140,13 @@ class FeatureEngineeringPipeline:
         fs_config = self.config.get("feature_selection", None)
         if fs_config is None:
             self.selected_features = list(df.columns)
+            return
+
+        # If selected features explicitly provided use them directly
+        explicit_features = fs_config.get("selected_features", None)
+        if explicit_features is not None:
+            self.selected_features = [f for f in explicit_features if f in df.columns]
+            print(f"Using {len(self.selected_features)} explicitly selected features")
             return
 
         variance_threshold = fs_config.get("variance_threshold", 0.0)
@@ -162,6 +193,18 @@ class FeatureEngineeringPipeline:
         df = df.copy()
         for col, (_, value) in self.imputers.items():
             df[col] = df[col].fillna(value)
+        return df
+
+    def _apply_ordinal_encoders(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Apply ordinal encoding — maps categories to 0-based integers.
+        Unknown values (in test set but not train) mapped to -1.
+        """
+        df = df.copy()
+
+        for col, mapping in self.ordinal_encoders.items():
+            df[col] = df[col].map(mapping).fillna(-1).astype(int)
+
         return df
 
     def _apply_encoders(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -263,6 +306,7 @@ class FeatureEngineeringPipeline:
         df = self._apply_imputers(df)
         df = self._parse_datetime(df)
         df = self._apply_datetime_features(df)
+        df = self._apply_ordinal_encoders(df)
         df = self._apply_encoders(df)
         df = self._apply_scalers(df)
         return df
@@ -282,7 +326,11 @@ class FeatureEngineeringPipeline:
     def fit(self, df: pd.DataFrame, target=None):
         df = df.copy()
 
-        self.feature_types = detect_feature_types(df, config=self.config)
+        self.feature_types = detect_feature_types(
+            df,
+            config=self.config,
+            target=target
+        )
         df = self._parse_datetime(df)
 
         self.datetime_reference = {}
@@ -292,6 +340,7 @@ class FeatureEngineeringPipeline:
 
         self._fit_imputers(df)
         self._fit_datetime_features(df)
+        self._fit_ordinal_encoders(df)
         self._fit_encoders(df)
         self._fit_scalers(df)
 

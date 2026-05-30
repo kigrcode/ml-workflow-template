@@ -51,11 +51,25 @@ def shap_filter(
 ) -> list:
     """
     Keep top features by mean absolute SHAP value.
-    percentile=80 keeps the top 80% of features.
-    Returns list of selected feature names.
+    Automatically selects the appropriate explainer based on model type:
+    - TreeExplainer for tree based models
+    - LinearExplainer for linear models
+    - KernelExplainer as fallback for unsupported models
     """
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X)
+    try:
+        # Try TreeExplainer first — works for XGBoost, LightGBM, Random Forest etc.
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X)
+    except Exception:
+        try:
+            # LinearExplainer for linear models — Logistic Regression, Ridge etc.
+            explainer = shap.LinearExplainer(model, X)
+            shap_values = explainer.shap_values(X)
+        except Exception:
+            # KernelExplainer as last resort — works for any model but slow
+            print("Falling back to KernelExplainer — this may be slow.")
+            explainer = shap.KernelExplainer(model.predict_proba, X)
+            shap_values = explainer.shap_values(X)
 
     # Handle multiclass output
     if isinstance(shap_values, list):

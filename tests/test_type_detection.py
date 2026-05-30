@@ -78,7 +78,7 @@ def test_datetime_detected(sample_df):
 def test_all_keys_present(sample_df):
     result = detect_feature_types(sample_df)
     assert set(result.keys()) == {
-        "numeric", "binary", "categorical", "high_cardinality", "datetime"
+        "numeric", "binary", "categorical", "high_cardinality", "datetime", "ordinal"
     }
 
 

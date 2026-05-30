@@ -33,8 +33,7 @@ MODEL_REGISTRY = {
         "task": "classification",
         "default_params": {
             "max_iter": 1000,
-            "solver": "lbfgs",
-            "n_jobs": -1
+            "solver": "lbfgs"
         }
     },
     "linear_regression": {
@@ -136,7 +135,9 @@ if LIGHTGBM_AVAILABLE:
         "default_params": {
             "n_estimators": 300,
             "learning_rate": 0.05,
-            "num_leaves": 31
+            "num_leaves": 31,
+            "min_child_samples": 20,
+            "verbose": -1
         }
     }
     MODEL_REGISTRY["lightgbm_regressor"] = {
@@ -145,7 +146,9 @@ if LIGHTGBM_AVAILABLE:
         "default_params": {
             "n_estimators": 300,
             "learning_rate": 0.05,
-            "num_leaves": 31
+            "num_leaves": 31,
+            "min_child_samples": 20,
+            "verbose": -1
         }
     }
 

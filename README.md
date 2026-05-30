@@ -44,10 +44,14 @@ PROJECT NAME TEMPLATE/
 
 ## Setup
 
+### When using this template for a new project, update the `name` field 
+in `environment.yml` to match your project name before running 
+`conda env create`.
+
 ### 1. Create and activate the environment
 ```bash
 conda env create -f environment.yml
-conda activate ml-template
+conda activate 'your project name'
 ```
 
 ### 2. Install the project as a package
@@ -58,6 +62,8 @@ This makes src modules importable from anywhere in the project.
 
 ### 3. Add your data
 Place your raw data file(s) in `data/raw/` before running any notebooks.
+Raw data should be unmodified analytically — missing values,
+outliers and transformations are handled by the workflow. However, the data must be uploaded in the correct format. 
 
 ### 4. Configure your project
 Edit `config.yaml` — this is the only file you need to change when 

@@ -6,11 +6,18 @@
 # =============================================================
 
 # Target variable
-target: "Survived"
+target: "num"
 
 # Columns to drop before modelling (IDs, irrelevant columns etc.)
-drop_columns:
-  - "PassengerId"
+drop_columns: []
+
+# Missing value indicators specific to this dataset
+# Note: common string indicators ("?", "name", "n/a" etc.) are
+# handled automatically by load_raw_data.
+# Only add numeric sentinels here that are valid in other datasets
+# but represent missing values in this one.
+na_values:
+  - -9
 
 # Train/test split
 split:
@@ -29,21 +36,24 @@ pipeline:
 
 # Feature engineering
 feature_engineering:
-  interactions: true        # multiply pairs of numeric columns (use for linear models)
-  polynomial: false          # square/cube numeric columns (use for linear models)
-  binning: true            # bin continuous columns into categories
-  aggregations: false        # group by categorical, compute numeric stats
-  polynomial_degree: 2       # degree for polynomial features
-  max_interaction_pairs: 20  # cap to prevent feature explosion
-  bin_numeric_cols: []       # list of columns to bin, empty = auto detect
-  n_bins: 5                  # number of bins for binning
-  aggregation_groupby: []    # categorical columns to group by
-  aggregation_targets: []    # numeric columns to aggregate
+  interactions: false      # most useful for linear models
+                           # tree models find interactions naturally
+  polynomial: false        # most useful for linear models
+                           # adds noise for tree-based models
+  binning: false           # useful when numeric features have
+                           # non-monotonic relationships with target
+  aggregations: false      # useful when group statistics carry signal
+  polynomial_degree: 2
+  max_interaction_pairs: 20
+  bin_numeric_cols: []
+  n_bins: 5
+  aggregation_groupby: []
+  aggregation_targets: []
 
 # Feature selection
 feature_selection:
-  mi_percentile: 50          # keep top 50% of features by mutual information
-  shap_percentile: 80        # keep top 80% of features by SHAP importance
+  mi_percentile: 50
+  shap_percentile: 80
 
 # Baseline models
 baseline:
@@ -57,15 +67,34 @@ baseline:
 
 # Tuning
 tuning:
-  method: "optuna"         # options: random_search, optuna
+  method: "optuna"
   n_trials: 50
   cv_folds: 5
   random_state: 42
-  scoring: "roc_auc"       # options: roc_auc, f1, accuracy, neg_rmse
+  scoring: "roc_auc"
   models_to_tune:
     - xgboost_classifier
 
 # Threshold tuning
 threshold_tuning:
-  metric: "f1"             # options: f1, precision, recall, accuracy                      
+  metric: "f1"             # options: f1, f2, f3, precision, recall, accuracy
+                           # f1 — balanced precision and recall, good default
+                           # f2 — weights recall twice as heavily as precision
+                           # f3 — weights recall three times as heavily as precision
+
   num_thresholds: 101
+  min_samples_warning: 200  # warn if fewer samples than this for threshold tuning
+
+# Target binarisation
+# Some datasets have ordinal targets that need converting to binary
+# Set to true if target values > 1 should be treated as positive class
+binarise_target: false
+
+# Feature type overrides
+# By default the pipeline auto-detects ordinal vs nominal features
+# Use these to explicitly override automatic detection
+# ordinal: features that should be ordinal encoded (0, 1, 2...)
+# nominal: features that should be one-hot encoded
+feature_type_overrides:
+  ordinal: []
+  nominal: [] 
